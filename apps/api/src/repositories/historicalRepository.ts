@@ -65,7 +65,8 @@ export interface RosterContext {
   usageBump: number | null;
 }
 
-type HistoricalGame = Prisma.HistoricalGameGetPayload<{}>;
+// Use inferred type from the model
+type HistoricalGame = Awaited<ReturnType<PrismaClient['historicalGame']['findFirst']>> & {};
 
 export class HistoricalRepository extends BaseRepository<
   HistoricalGame,
@@ -114,48 +115,52 @@ export class HistoricalRepository extends BaseRepository<
     const last5Days = new Date(date.getTime() - 5 * 24 * 60 * 60 * 1000);
     const last3Days = new Date(date.getTime() - 3 * 24 * 60 * 60 * 1000);
 
+    // Build the IN clause safely using Prisma.sql
+    const lowerNames = playerNames.map((n: string) => n.toLowerCase());
+    const inClause = Prisma.sql`(${Prisma.join(lowerNames)})`;
+
     // Use raw query for efficient aggregation across all players
     const stats = await this.prisma.$queryRaw<PlayerStats[]>`
       SELECT
-        h.[playerName],
-        COUNT(*) as gamesPlayed,
-        AVG(h.[dkFantasyPoints]) as seasonAvg,
+        h."playerName",
+        COUNT(*)::int as "gamesPlayed",
+        AVG(h."dkFantasyPoints") as "seasonAvg",
         (
-          SELECT AVG(h2.[dkFantasyPoints])
-          FROM [HistoricalGame] h2
-          WHERE h2.[playerName] = h.[playerName]
-          AND h2.[gameDate] >= ${last10Days}
-        ) as last10Avg,
+          SELECT AVG(h2."dkFantasyPoints")
+          FROM "HistoricalGame" h2
+          WHERE h2."playerName" = h."playerName"
+          AND h2."gameDate" >= ${last10Days}
+        ) as "last10Avg",
         (
-          SELECT AVG(h2.[dkFantasyPoints])
-          FROM [HistoricalGame] h2
-          WHERE h2.[playerName] = h.[playerName]
-          AND h2.[gameDate] >= ${last5Days}
-        ) as last5Avg,
+          SELECT AVG(h2."dkFantasyPoints")
+          FROM "HistoricalGame" h2
+          WHERE h2."playerName" = h."playerName"
+          AND h2."gameDate" >= ${last5Days}
+        ) as "last5Avg",
         (
-          SELECT AVG(h2.[dkFantasyPoints])
-          FROM [HistoricalGame] h2
-          WHERE h2.[playerName] = h.[playerName]
-          AND h2.[gameDate] >= ${last3Days}
-        ) as last3Avg,
-        STDEV(h.[dkFantasyPoints]) as stdDev,
-        MIN(h.[dkFantasyPoints]) as floorValue,
-        MAX(h.[dkFantasyPoints]) as ceilingValue,
+          SELECT AVG(h2."dkFantasyPoints")
+          FROM "HistoricalGame" h2
+          WHERE h2."playerName" = h."playerName"
+          AND h2."gameDate" >= ${last3Days}
+        ) as "last3Avg",
+        STDDEV(h."dkFantasyPoints") as "stdDev",
+        MIN(h."dkFantasyPoints") as "floorValue",
+        MAX(h."dkFantasyPoints") as "ceilingValue",
         (
-          SELECT AVG(h2.[dkFantasyPoints])
-          FROM [HistoricalGame] h2
-          WHERE h2.[playerName] = h.[playerName]
-          AND h2.[isHome] = 1
-        ) as homeAvg,
+          SELECT AVG(h2."dkFantasyPoints")
+          FROM "HistoricalGame" h2
+          WHERE h2."playerName" = h."playerName"
+          AND h2."isHome" = true
+        ) as "homeAvg",
         (
-          SELECT AVG(h2.[dkFantasyPoints])
-          FROM [HistoricalGame] h2
-          WHERE h2.[playerName] = h.[playerName]
-          AND h2.[isHome] = 0
-        ) as awayAvg
-      FROM [HistoricalGame] h
-      WHERE LOWER(h.[playerName]) IN (${Prisma.join(playerNames.map(n => n.toLowerCase()))})
-      GROUP BY h.[playerName]
+          SELECT AVG(h2."dkFantasyPoints")
+          FROM "HistoricalGame" h2
+          WHERE h2."playerName" = h."playerName"
+          AND h2."isHome" = false
+        ) as "awayAvg"
+      FROM "HistoricalGame" h
+      WHERE LOWER(h."playerName") IN ${inClause}
+      GROUP BY h."playerName"
     `;
 
     return stats;
@@ -230,7 +235,8 @@ export class HistoricalRepository extends BaseRepository<
     });
 
     // Group games by date
-    const gamesByDate = new Map<string, typeof teamGames>();
+    type TeamGame = (typeof teamGames)[number];
+    const gamesByDate = new Map<string, TeamGame[]>();
     for (const game of teamGames) {
       const dateKey = game.gameDate.toISOString().split('T')[0] ?? '';
       const existing = gamesByDate.get(dateKey) ?? [];
@@ -248,8 +254,8 @@ export class HistoricalRepository extends BaseRepository<
     }
 
     const highUsagePlayers = Array.from(playerTotals.entries())
-      .filter(([name, stats]) => stats.total / stats.count >= 25 && name.toLowerCase() !== playerName.toLowerCase())
-      .map(([name]) => name);
+      .filter(([name, stats]: [string, { total: number; count: number }]) => stats.total / stats.count >= 25 && name.toLowerCase() !== playerName.toLowerCase())
+      .map(([name]: [string, { total: number; count: number }]) => name);
 
     // Calculate context for each high-usage teammate
     const contexts: RosterContext[] = [];
