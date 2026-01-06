@@ -189,11 +189,11 @@ export class HistoricalRepository extends BaseRepository<
 
     const avgVsOpp =
       vsOppGames.length > 0
-        ? vsOppGames.reduce((sum, g) => sum + g.dkFantasyPoints, 0) / vsOppGames.length
+        ? vsOppGames.reduce((sum: number, g: { dkFantasyPoints: number }) => sum + g.dkFantasyPoints, 0) / vsOppGames.length
         : null;
 
     const seasonAvg =
-      allGames.reduce((sum, g) => sum + g.dkFantasyPoints, 0) / allGames.length;
+      allGames.reduce((sum: number, g: { dkFantasyPoints: number }) => sum + g.dkFantasyPoints, 0) / allGames.length;
 
     return {
       playerName,
@@ -364,17 +364,18 @@ export class HistoricalRepository extends BaseRepository<
       },
     });
 
-    const b2bGames = games.filter((g) => g.isBackToBack);
-    const nonB2bGames = games.filter((g) => !g.isBackToBack);
+    type B2bGame = { dkFantasyPoints: number; isBackToBack: boolean };
+    const b2bGames = games.filter((g: B2bGame) => g.isBackToBack);
+    const nonB2bGames = games.filter((g: B2bGame) => !g.isBackToBack);
 
     const avgOnB2b =
       b2bGames.length > 0
-        ? b2bGames.reduce((sum, g) => sum + g.dkFantasyPoints, 0) / b2bGames.length
+        ? b2bGames.reduce((sum: number, g: B2bGame) => sum + g.dkFantasyPoints, 0) / b2bGames.length
         : null;
 
     const avgNonB2b =
       nonB2bGames.length > 0
-        ? nonB2bGames.reduce((sum, g) => sum + g.dkFantasyPoints, 0) / nonB2bGames.length
+        ? nonB2bGames.reduce((sum: number, g: B2bGame) => sum + g.dkFantasyPoints, 0) / nonB2bGames.length
         : null;
 
     return {
@@ -402,10 +403,11 @@ export class HistoricalRepository extends BaseRepository<
       },
     });
 
-    const uniquePlayers = new Set(games.map((g) => g.playerName)).size;
+    type SeasonGame = { playerName: string; dkFantasyPoints: number };
+    const uniquePlayers = new Set(games.map((g: SeasonGame) => g.playerName)).size;
     const avgDkPoints =
       games.length > 0
-        ? games.reduce((sum, g) => sum + g.dkFantasyPoints, 0) / games.length
+        ? games.reduce((sum: number, g: SeasonGame) => sum + g.dkFantasyPoints, 0) / games.length
         : 0;
 
     return {
