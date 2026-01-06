@@ -61,8 +61,8 @@ export class ChatService {
     ];
 
     let iteration = 0;
-    let allToolCalls: ToolCall[] = [];
-    let allToolResults: ToolResult[] = [];
+    const allToolCalls: ToolCall[] = [];
+    const allToolResults: ToolResult[] = [];
 
     while (iteration < this.maxIterations) {
       iteration++;

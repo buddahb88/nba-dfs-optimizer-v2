@@ -3,7 +3,7 @@ import {
   RepositoryContainer,
   getRepositories,
 } from '../../repositories/index.js';
-import { RotoWireParser, ParsedSlateData } from './rotoWireParser.js';
+import { RotoWireParser } from './rotoWireParser.js';
 import { HistoricalDataLoader } from './historicalDataLoader.js';
 import { DefenseDataLoader } from './defenseDataLoader.js';
 

@@ -196,7 +196,7 @@ export class DefenseDataLoader {
       advantage: 'favorable' | 'neutral' | 'unfavorable';
     }[];
   } | null> {
-    const [def1, def2, leagueAvg] = await Promise.all([
+    const [def1, def2, _leagueAvg] = await Promise.all([
       this.repos.teamDefense.findByTeam(team1),
       this.repos.teamDefense.findByTeam(team2),
       this.repos.teamDefense.getLeagueAverages(),

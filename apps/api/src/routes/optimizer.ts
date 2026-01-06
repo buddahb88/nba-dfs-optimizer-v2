@@ -4,7 +4,8 @@ import { z } from 'zod';
 import { OptimizerEngine, ProjectionEngine, BacktestEngine } from '../services/index.js';
 import { PlayerRepository } from '../repositories/index.js';
 
-const playerRepo = new PlayerRepository(prisma);
+// PlayerRepository for future use
+const _playerRepo = new PlayerRepository(prisma);
 const projectionEngine = new ProjectionEngine(prisma);
 const backtestEngine = new BacktestEngine(prisma);
 

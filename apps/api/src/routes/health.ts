@@ -27,8 +27,8 @@ export const healthRoutes: FastifyPluginAsync = async (app) => {
       try {
         await prisma.$queryRaw`SELECT 1`;
         dbStatus = 'connected';
-      } catch (error) {
-        app.log.error({ err: error }, 'Database health check failed');
+      } catch {
+        // Database health check failed - log silently
       }
 
       return {
@@ -67,7 +67,7 @@ export const healthRoutes: FastifyPluginAsync = async (app) => {
       try {
         await prisma.$queryRaw`SELECT 1`;
         return { ready: true };
-      } catch (error) {
+      } catch {
         reply.status(503);
         return {
           ready: false,

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { OptimizerEngine, Player, OptimizerConfig } from './optimizerEngine.js';
+import { OptimizerEngine, Player } from './optimizerEngine.js';
 
 // Test player data with proper DraftKings positions
 // Players from TWO games to satisfy stacking constraints (max 4 per game)
@@ -430,7 +430,7 @@ describe('OptimizerEngine', () => {
 
       // No player should appear in more than 50% of lineups
       const maxAllowed = Math.ceil(0.5 * lineups.length);
-      for (const [playerId, count] of playerCounts) {
+      for (const [_playerId, count] of playerCounts) {
         expect(count).toBeLessThanOrEqual(maxAllowed + 1); // +1 for rounding
       }
     });

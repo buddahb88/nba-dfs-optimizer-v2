@@ -139,7 +139,7 @@ export class ProjectionEngine {
   ): Promise<EnhancedProjection[]> {
     const date = slateDate || new Date();
     const playerNames = players.map((p) => p.name);
-    const opponentTeams = [...new Set(players.map((p) => p.opponent))];
+    const _opponentTeams = [...new Set(players.map((p) => p.opponent))];
 
     // BATCH LOAD all data in parallel (fixes N+1 problem)
     const [historicalData, defenseData] = await Promise.all([
@@ -180,7 +180,7 @@ export class ProjectionEngine {
       return positions[0] || 'UTIL';
     }
     // Parse comma-separated string
-    const parsed = positions.split(/[,\/]/).map(p => p.trim()).filter(p => p.length > 0);
+    const parsed = positions.split(/[,/]/).map(p => p.trim()).filter(p => p.length > 0);
     return parsed[0] || 'UTIL';
   }
 
@@ -605,7 +605,7 @@ export class ProjectionEngine {
     teamRosters: Map<string, string[]>
   ): Promise<EnhancedProjection[]> {
     // Get roster context for each team
-    const teams = [...new Set(projections.map((p) => p.playerName))];
+    const _teams = [...new Set(projections.map((p) => p.playerName))];
 
     // For each player, check if high-usage teammates are missing
     // This would require comparing slate roster to historical team rosters

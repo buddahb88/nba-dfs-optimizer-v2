@@ -30,10 +30,6 @@ export interface SlateWithCounts {
 }
 
 type Slate = Awaited<ReturnType<PrismaClient['slate']['findFirst']>> & {};
-type Player = Awaited<ReturnType<PrismaClient['player']['findFirst']>> & {};
-type LineupWithPlayerRelations = Awaited<ReturnType<PrismaClient['lineup']['findFirst']>> & {
-  players: Array<{ player: Player }>;
-};
 
 export class SlateRepository extends BaseRepository<
   Slate,

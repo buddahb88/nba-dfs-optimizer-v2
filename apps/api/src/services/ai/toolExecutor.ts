@@ -343,7 +343,7 @@ export class ToolExecutor {
   }
 
   private async getGameEnvironment(args: { team1: string; team2: string }) {
-    const [def1, def2, leagueAvg] = await Promise.all([
+    const [def1, def2, _leagueAvg] = await Promise.all([
       this.repos.teamDefense.findByTeam(args.team1),
       this.repos.teamDefense.findByTeam(args.team2),
       this.repos.teamDefense.getLeagueAverages(),
@@ -436,7 +436,7 @@ export class ToolExecutor {
   }
 
   private async getSlateSummary(args: { slateId: string }) {
-    const [slate, players, stats] = await Promise.all([
+    const [slate, players, _stats] = await Promise.all([
       this.repos.slate.findById(args.slateId),
       this.prisma.player.findMany({
         where: { slateId: args.slateId },

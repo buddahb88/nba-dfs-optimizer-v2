@@ -313,7 +313,7 @@ export class OptimizerEngine {
    * Calculate player score for optimization
    */
   private calculatePlayerScore(player: Player, lineupIndex: number): number {
-    const projection = player.projectedPoints || 0;
+    const _projection = player.projectedPoints || 0;
 
     if (this.config.mode === 'CASH') {
       return this.calculateCashScore(player);
@@ -326,12 +326,12 @@ export class OptimizerEngine {
    * Cash game scoring - prioritize floor and consistency
    */
   private calculateCashScore(player: Player): number {
-    const projection = player.projectedPoints || 0;
+    const _projection = player.projectedPoints || 0;
     const floor = player.floor || projection * 0.75;
     const value = player.value || projection / (player.salary / 1000);
 
     // Cash games: weight toward floor and value
-    let score = projection * 0.5 + floor * 0.3 + value * 2;
+    const score = projection * 0.5 + floor * 0.3 + value * 2;
 
     return score;
   }
@@ -340,7 +340,7 @@ export class OptimizerEngine {
    * GPP scoring - prioritize ceiling, leverage, and differentiation
    */
   private calculateGPPScore(player: Player, lineupIndex: number): number {
-    const projection = player.projectedPoints || 0;
+    const _projection = player.projectedPoints || 0;
     const ceiling = player.ceiling || projection * 1.25;
     const value = player.value || projection / (player.salary / 1000);
     const ownership = player.ownership || 10;

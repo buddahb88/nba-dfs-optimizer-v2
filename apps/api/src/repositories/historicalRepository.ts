@@ -111,9 +111,6 @@ export class HistoricalRepository extends BaseRepository<
     asOfDate?: Date
   ): Promise<PlayerStats[]> {
     const date = asOfDate || new Date();
-    const last10Days = new Date(date.getTime() - 10 * 24 * 60 * 60 * 1000);
-    const last5Days = new Date(date.getTime() - 5 * 24 * 60 * 60 * 1000);
-    const last3Days = new Date(date.getTime() - 3 * 24 * 60 * 60 * 1000);
 
     // Use Prisma queries instead of raw SQL for better portability
     const stats: PlayerStats[] = [];
@@ -262,7 +259,7 @@ export class HistoricalRepository extends BaseRepository<
       let gamesWithoutTeammate = 0;
       let ptsWithoutTeammate = 0;
 
-      for (const [dateKey, games] of gamesByDate) {
+      for (const [, games] of gamesByDate) {
         const playerGame = games.find(
           (g) => g.playerName.toLowerCase() === playerName.toLowerCase()
         );
