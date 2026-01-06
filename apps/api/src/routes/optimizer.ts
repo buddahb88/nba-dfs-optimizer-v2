@@ -71,7 +71,8 @@ export const optimizerRoutes: FastifyPluginAsync = async (app) => {
       }
 
       // Map players to optimizer format with enhanced projections
-      const playerInputs = players.map((p) => ({
+      type SlatePlayer = typeof players[number];
+      const playerInputs = players.map((p: SlatePlayer) => ({
         id: p.id,
         name: p.name,
         team: p.team,
@@ -118,10 +119,11 @@ export const optimizerRoutes: FastifyPluginAsync = async (app) => {
         }
       }
 
+      type PlayerInput = typeof playerInputs[number];
       const exposureStats = Array.from(exposureMap.entries())
         .map(([playerId, count]) => ({
           playerId,
-          playerName: playerInputs.find((p) => p.id === playerId)?.name || 'Unknown',
+          playerName: playerInputs.find((p: PlayerInput) => p.id === playerId)?.name || 'Unknown',
           count,
           percentage: Math.round((count / lineups.length) * 100),
         }))
@@ -219,14 +221,15 @@ export const optimizerRoutes: FastifyPluginAsync = async (app) => {
       };
 
       // Calculate total salary and projected points
-      const playerIds = body.players.map((p) => p.playerId);
+      const playerIds = body.players.map((p: { playerId: string; slot: string }) => p.playerId);
       const players = await prisma.player.findMany({
         where: { id: { in: playerIds } },
       });
 
-      const totalSalary = players.reduce((sum, p) => sum + p.salary, 0);
+      type SavedPlayer = typeof players[number];
+      const totalSalary = players.reduce((sum: number, p: SavedPlayer) => sum + p.salary, 0);
       const projectedPoints = players.reduce(
-        (sum, p) => sum + (p.projectedPoints || 0),
+        (sum: number, p: SavedPlayer) => sum + (p.projectedPoints || 0),
         0
       );
 
@@ -322,7 +325,8 @@ export const optimizerRoutes: FastifyPluginAsync = async (app) => {
       }
 
       // Map to projection input format
-      const playerInputs = players.map((p) => ({
+      type ProjPlayer = typeof players[number];
+      const playerInputs = players.map((p: ProjPlayer) => ({
         id: p.id,
         name: p.name,
         team: p.team,

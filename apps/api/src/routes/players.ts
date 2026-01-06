@@ -66,19 +66,20 @@ export const playerRoutes: FastifyPluginAsync = async (app) => {
       });
 
       // Filter by positions if specified
+      type SlatePlayer = typeof players[number];
       let filteredPlayers = players;
       if (query.positions) {
         const requestedPositions = query.positions.split(',');
-        filteredPlayers = players.filter((p) => {
+        filteredPlayers = players.filter((p: SlatePlayer) => {
           const playerPositions = parsePositions(p.positions);
-          return playerPositions.some((pos) =>
+          return playerPositions.some((pos: string) =>
             requestedPositions.includes(pos)
           );
         });
       }
 
       // Transform to include parsed positions
-      const transformedPlayers = filteredPlayers.map((player) => ({
+      const transformedPlayers = filteredPlayers.map((player: SlatePlayer) => ({
         ...player,
         positions: parsePositions(player.positions),
       }));

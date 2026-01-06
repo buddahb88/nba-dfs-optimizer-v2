@@ -187,17 +187,17 @@ export const historicalRoutes: FastifyPluginAsync = async (app) => {
         // For each missing player, find beneficiaries
         for (const missingPlayer of missingPlayers) {
           const missingPlayerGames = recentGames.filter(
-            (g) => g.playerName.toLowerCase() === missingPlayer
+            (g: RecentGame) => g.playerName.toLowerCase() === missingPlayer
           );
           const avgMissingPts =
-            missingPlayerGames.reduce((s, g) => s + g.dkFantasyPoints, 0) /
+            missingPlayerGames.reduce((s: number, g: RecentGame) => s + g.dkFantasyPoints, 0) /
             missingPlayerGames.length;
 
           if (avgMissingPts < 25) continue; // Only care about high-usage players
 
           // Find games where this player was OUT vs IN
           // This is a simplified version - full implementation would compare rosters
-          const teamPlayers = slatePlayers.filter((p) => p.team === team);
+          const teamPlayers = slatePlayers.filter((p: SlatePlayer) => p.team === team);
 
           for (const player of teamPlayers) {
             const bump = player.usageBump || 0;

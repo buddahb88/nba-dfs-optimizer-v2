@@ -168,7 +168,8 @@ export class ToolExecutor {
       throw new Error('Not enough players to build a lineup');
     }
 
-    const playerInputs = players.map((p) => ({
+    type LineupPlayer = typeof players[number];
+    const playerInputs = players.map((p: LineupPlayer) => ({
       id: p.id,
       name: p.name,
       team: p.team,
@@ -290,9 +291,11 @@ export class ToolExecutor {
     // If no explicit usage bumps, look for potential value plays
     // (players with high ceiling relative to salary)
     if (bumps.length === 0) {
+      type BumpPlayer = typeof slatePlayers[number];
+      type ValuePlay = { player: string; team: string; projectedBump: number; salary: number; projection: number | null; value: number };
       const valuePlays = slatePlayers
-        .filter((p) => p.ceiling && p.salary)
-        .map((p) => ({
+        .filter((p: BumpPlayer) => p.ceiling && p.salary)
+        .map((p: BumpPlayer): ValuePlay => ({
           player: p.name,
           team: p.team,
           projectedBump: 0,
@@ -300,7 +303,7 @@ export class ToolExecutor {
           projection: p.projectedPoints,
           value: (p.ceiling || 0) / (p.salary / 1000),
         }))
-        .sort((a, b) => b.value - a.value)
+        .sort((a: ValuePlay, b: ValuePlay) => b.value - a.value)
         .slice(0, 10);
 
       return {
@@ -447,7 +450,8 @@ export class ToolExecutor {
     }
 
     // Top projections
-    const topProjections = players.slice(0, 10).map((p) => ({
+    type OverviewPlayer = typeof players[number];
+    const topProjections = players.slice(0, 10).map((p: OverviewPlayer) => ({
       name: p.name,
       team: p.team,
       salary: p.salary,
@@ -455,8 +459,8 @@ export class ToolExecutor {
     }));
 
     // Best values
-    const byValue = [...players].sort((a, b) => (b.value || 0) - (a.value || 0));
-    const topValues = byValue.slice(0, 10).map((p) => ({
+    const byValue = [...players].sort((a: OverviewPlayer, b: OverviewPlayer) => (b.value || 0) - (a.value || 0));
+    const topValues = byValue.slice(0, 10).map((p: OverviewPlayer) => ({
       name: p.name,
       team: p.team,
       salary: p.salary,
@@ -480,7 +484,7 @@ export class ToolExecutor {
       stats: {
         playerCount: players.length,
         gameCount: Math.ceil(teams.size / 2),
-        avgSalary: Math.round(players.reduce((s, p) => s + p.salary, 0) / players.length),
+        avgSalary: Math.round(players.reduce((s: number, p: OverviewPlayer) => s + p.salary, 0) / players.length),
       },
       topProjections,
       topValues,
@@ -506,8 +510,9 @@ export class ToolExecutor {
 
         // Get historical stats
         const history = await this.repos.historical.findByPlayer(name, { limit: 10 });
+        type HistGame = typeof history[number];
         const avgPoints = history.length > 0
-          ? history.reduce((s, g) => s + g.dkFantasyPoints, 0) / history.length
+          ? history.reduce((s: number, g: HistGame) => s + g.dkFantasyPoints, 0) / history.length
           : null;
 
         return {
@@ -552,27 +557,28 @@ export class ToolExecutor {
 
     // Analyze each game
     const stacks = [];
+    type StackPlayer = typeof players[number];
     for (const [game, gamePlayers] of games) {
       // Sort by ceiling for GPP stacking
-      const sorted = gamePlayers.sort((a, b) => (b.ceiling || 0) - (a.ceiling || 0));
+      const sorted = gamePlayers.sort((a: StackPlayer, b: StackPlayer) => (b.ceiling || 0) - (a.ceiling || 0));
 
       const stackSize = args.stackSize || 3;
       const topPlayers = sorted.slice(0, stackSize);
 
-      const totalCeiling = topPlayers.reduce((s, p) => s + (p.ceiling || 0), 0);
+      const totalCeiling = topPlayers.reduce((s: number, p: StackPlayer) => s + (p.ceiling || 0), 0);
       const avgOwnership =
-        topPlayers.reduce((s, p) => s + (p.ownership || 10), 0) / topPlayers.length;
+        topPlayers.reduce((s: number, p: StackPlayer) => s + (p.ownership || 10), 0) / topPlayers.length;
 
       stacks.push({
         game,
-        players: topPlayers.map((p) => ({
+        players: topPlayers.map((p: StackPlayer) => ({
           name: p.name,
           team: p.team,
           salary: p.salary,
           ceiling: p.ceiling,
           ownership: p.ownership,
         })),
-        totalSalary: topPlayers.reduce((s, p) => s + p.salary, 0),
+        totalSalary: topPlayers.reduce((s: number, p: StackPlayer) => s + p.salary, 0),
         combinedCeiling: Math.round(totalCeiling * 10) / 10,
         avgOwnership: Math.round(avgOwnership * 10) / 10,
       });
