@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@nba-dfs/database';
+import { PrismaClient } from '@nba-dfs/database';
 import { BaseRepository } from './baseRepository.js';
 
 // Types for historical game operations
@@ -115,53 +115,49 @@ export class HistoricalRepository extends BaseRepository<
     const last5Days = new Date(date.getTime() - 5 * 24 * 60 * 60 * 1000);
     const last3Days = new Date(date.getTime() - 3 * 24 * 60 * 60 * 1000);
 
-    // Build the IN clause safely using Prisma.sql
-    const lowerNames = playerNames.map((n: string) => n.toLowerCase());
-    const inClause = Prisma.sql`(${Prisma.join(lowerNames)})`;
+    // Use Prisma queries instead of raw SQL for better portability
+    const stats: PlayerStats[] = [];
 
-    // Use raw query for efficient aggregation across all players
-    const stats = await this.prisma.$queryRaw<PlayerStats[]>`
-      SELECT
-        h."playerName",
-        COUNT(*)::int as "gamesPlayed",
-        AVG(h."dkFantasyPoints") as "seasonAvg",
-        (
-          SELECT AVG(h2."dkFantasyPoints")
-          FROM "HistoricalGame" h2
-          WHERE h2."playerName" = h."playerName"
-          AND h2."gameDate" >= ${last10Days}
-        ) as "last10Avg",
-        (
-          SELECT AVG(h2."dkFantasyPoints")
-          FROM "HistoricalGame" h2
-          WHERE h2."playerName" = h."playerName"
-          AND h2."gameDate" >= ${last5Days}
-        ) as "last5Avg",
-        (
-          SELECT AVG(h2."dkFantasyPoints")
-          FROM "HistoricalGame" h2
-          WHERE h2."playerName" = h."playerName"
-          AND h2."gameDate" >= ${last3Days}
-        ) as "last3Avg",
-        STDDEV(h."dkFantasyPoints") as "stdDev",
-        MIN(h."dkFantasyPoints") as "floorValue",
-        MAX(h."dkFantasyPoints") as "ceilingValue",
-        (
-          SELECT AVG(h2."dkFantasyPoints")
-          FROM "HistoricalGame" h2
-          WHERE h2."playerName" = h."playerName"
-          AND h2."isHome" = true
-        ) as "homeAvg",
-        (
-          SELECT AVG(h2."dkFantasyPoints")
-          FROM "HistoricalGame" h2
-          WHERE h2."playerName" = h."playerName"
-          AND h2."isHome" = false
-        ) as "awayAvg"
-      FROM "HistoricalGame" h
-      WHERE LOWER(h."playerName") IN ${inClause}
-      GROUP BY h."playerName"
-    `;
+    for (const playerName of playerNames) {
+      const games = await this.prisma.historicalGame.findMany({
+        where: {
+          playerName: { contains: playerName },
+          gameDate: { gte: new Date(date.getTime() - 365 * 24 * 60 * 60 * 1000) },
+        },
+        orderBy: { gameDate: 'desc' },
+      });
+
+      if (games.length === 0) continue;
+
+      const allPoints = games.map((g: { dkFantasyPoints: number }) => g.dkFantasyPoints);
+      const last10Points = games.slice(0, 10).map((g: { dkFantasyPoints: number }) => g.dkFantasyPoints);
+      const last5Points = games.slice(0, 5).map((g: { dkFantasyPoints: number }) => g.dkFantasyPoints);
+      const last3Points = games.slice(0, 3).map((g: { dkFantasyPoints: number }) => g.dkFantasyPoints);
+      const homePoints = games.filter((g: { isHome: boolean }) => g.isHome).map((g: { dkFantasyPoints: number }) => g.dkFantasyPoints);
+      const awayPoints = games.filter((g: { isHome: boolean }) => !g.isHome).map((g: { dkFantasyPoints: number }) => g.dkFantasyPoints);
+
+      const avg = (arr: number[]) => arr.length > 0 ? arr.reduce((a: number, b: number) => a + b, 0) / arr.length : null;
+      const stdDev = (arr: number[]) => {
+        if (arr.length < 2) return null;
+        const mean = avg(arr) ?? 0;
+        const sqDiffs = arr.map((v: number) => Math.pow(v - mean, 2));
+        return Math.sqrt((sqDiffs.reduce((a: number, b: number) => a + b, 0)) / arr.length);
+      };
+
+      stats.push({
+        playerName: games[0]?.playerName ?? playerName,
+        gamesPlayed: games.length,
+        seasonAvg: avg(allPoints) ?? 0,
+        last10Avg: avg(last10Points),
+        last5Avg: avg(last5Points),
+        last3Avg: avg(last3Points),
+        stdDev: stdDev(allPoints),
+        floorValue: Math.min(...allPoints),
+        ceilingValue: Math.max(...allPoints),
+        homeAvg: avg(homePoints),
+        awayAvg: avg(awayPoints),
+      });
+    }
 
     return stats;
   }
