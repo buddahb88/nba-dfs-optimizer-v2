@@ -1,19 +1,19 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { prisma } from '@nba-dfs/database';
 import { z } from 'zod';
-import {
-  ChatService,
-  PlaceholderProvider,
-  type ChatMessage,
-} from '../services/index.js';
+import { ChatService, type ChatMessage } from '../services/index.js';
+import { createAIProvider, getProviderStatus } from '../services/ai/providers/index.js';
 
-// Initialize chat service with placeholder provider
-// Replace PlaceholderProvider with actual AI provider (Azure OpenAI, Anthropic, etc.)
+// Initialize chat service with configured AI provider
+// Set AI_PROVIDER=azure and AZURE_OPENAI_* env vars for real AI
+const aiProvider = createAIProvider();
 const chatService = new ChatService(prisma, {
-  provider: new PlaceholderProvider(),
+  provider: aiProvider,
   maxIterations: 5,
   temperature: 0.7,
 });
+
+console.log(`Chat service initialized with provider: ${aiProvider.getName()}`);
 
 const createSessionSchema = z.object({
   name: z.string().optional(),
@@ -265,6 +265,27 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
       return {
         success: true,
         message: 'Session deleted',
+      };
+    }
+  );
+
+  // Get AI provider status
+  app.get(
+    '/status',
+    {
+      schema: {
+        tags: ['Chat'],
+        description: 'Get AI provider status',
+      },
+    },
+    async () => {
+      const status = getProviderStatus();
+      return {
+        success: true,
+        data: {
+          currentProvider: aiProvider.getName(),
+          ...status,
+        },
       };
     }
   );

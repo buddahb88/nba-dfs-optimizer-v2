@@ -23,6 +23,7 @@
     "@nba-dfs/database": "workspace:*",
     "@nba-dfs/types": "workspace:*",
     "@nba-dfs/utils": "workspace:*",
+    "dotenv": "^17.2.3",
     "fastify": "^4.28.1",
     "javascript-lp-solver": "^0.4.24",
     "zod": "^3.24.1"

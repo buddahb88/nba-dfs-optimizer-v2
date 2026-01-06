@@ -1,9 +1,18 @@
-import { buildApp } from './app.js';
+import { config } from 'dotenv';
+import { resolve } from 'path';
+import { fileURLToPath } from 'url';
 
-const PORT = parseInt(process.env.PORT || '3001', 10);
-const HOST = process.env.HOST || '0.0.0.0';
+// Load .env from monorepo root BEFORE any other imports
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+config({ path: resolve(__dirname, '../../../.env') });
 
+// Now dynamically import the app after env vars are loaded
 async function start() {
+  const { buildApp } = await import('./app.js');
+
+  const PORT = parseInt(process.env.PORT || '3001', 10);
+  const HOST = process.env.HOST || '0.0.0.0';
+
   const app = await buildApp({
     logger: {
       level: process.env.LOG_LEVEL || 'info',

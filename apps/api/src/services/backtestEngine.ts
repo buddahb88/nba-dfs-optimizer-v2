@@ -1,6 +1,24 @@
-import { PrismaClient } from '@nba-dfs/database';
+import { PrismaClient, Prisma } from '@nba-dfs/database';
 import { getRepositories, RepositoryContainer } from '../repositories/index.js';
 import { ProjectionEngine, EnhancedProjection, PlayerInput } from './projectionEngine.js';
+
+// Saved backtest run (from database)
+export interface SavedBacktestRun {
+  id: string;
+  startDate: Date;
+  endDate: Date;
+  totalSlates: number;
+  meanError: number;
+  meanAbsError: number;
+  rmse: number | null;
+  r2: number | null;
+  byConfidence: {
+    high: { mae: number; hitRate: number; count: number };
+    medium: { mae: number; hitRate: number; count: number };
+    low: { mae: number; hitRate: number; count: number };
+  } | null;
+  createdAt: Date;
+}
 
 // Backtest configuration
 export interface BacktestConfig {
@@ -68,10 +86,12 @@ export interface BacktestResults {
 }
 
 export class BacktestEngine {
+  private prisma: PrismaClient;
   private repos: RepositoryContainer;
   private projectionEngine: ProjectionEngine;
 
   constructor(prisma: PrismaClient) {
+    this.prisma = prisma;
     this.repos = getRepositories(prisma);
     this.projectionEngine = new ProjectionEngine(prisma);
   }
@@ -563,6 +583,99 @@ export class BacktestEngine {
       },
       winner: methodA,
       difference: 0.1,
+    };
+  }
+
+  /**
+   * Run backtest and save results to database
+   */
+  async runAndSaveBacktest(config: BacktestConfig): Promise<SavedBacktestRun> {
+    const results = await this.runBacktest(config);
+
+    // Save to database
+    const saved = await this.prisma.backtestRun.create({
+      data: {
+        startDate: config.startDate,
+        endDate: config.endDate,
+        totalSlates: results.summary.totalDates,
+        meanError: results.summary.meanError,
+        meanAbsError: results.summary.meanAbsoluteError,
+        rmse: results.summary.rootMeanSquareError,
+        r2: results.summary.correlationCoefficient,
+        byConfidence: JSON.stringify(results.byConfidence),
+      },
+    });
+
+    return this.mapToSavedRun(saved);
+  }
+
+  /**
+   * Get historical backtest runs
+   */
+  async getBacktestHistory(limit = 20): Promise<SavedBacktestRun[]> {
+    const runs = await this.prisma.backtestRun.findMany({
+      orderBy: { createdAt: 'desc' },
+      take: limit,
+    });
+
+    return runs.map(this.mapToSavedRun);
+  }
+
+  /**
+   * Get a specific backtest run by ID
+   */
+  async getBacktestRun(id: string): Promise<SavedBacktestRun | null> {
+    const run = await this.prisma.backtestRun.findUnique({
+      where: { id },
+    });
+
+    return run ? this.mapToSavedRun(run) : null;
+  }
+
+  /**
+   * Delete a backtest run
+   */
+  async deleteBacktestRun(id: string): Promise<void> {
+    await this.prisma.backtestRun.delete({
+      where: { id },
+    });
+  }
+
+  /**
+   * Map database record to SavedBacktestRun
+   */
+  private mapToSavedRun(run: {
+    id: string;
+    startDate: Date;
+    endDate: Date;
+    totalSlates: number;
+    meanError: number;
+    meanAbsError: number;
+    rmse: number | null;
+    r2: number | null;
+    byConfidence: string | null;
+    createdAt: Date;
+  }): SavedBacktestRun {
+    let byConfidence = null;
+    if (run.byConfidence) {
+      try {
+        byConfidence = JSON.parse(run.byConfidence);
+      } catch {
+        // Ignore parse errors
+      }
+    }
+
+    return {
+      id: run.id,
+      startDate: run.startDate,
+      endDate: run.endDate,
+      totalSlates: run.totalSlates,
+      meanError: run.meanError,
+      meanAbsError: run.meanAbsError,
+      rmse: run.rmse,
+      r2: run.r2,
+      byConfidence,
+      createdAt: run.createdAt,
     };
   }
 }

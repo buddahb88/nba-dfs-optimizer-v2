@@ -25,6 +25,7 @@ export type {
   BacktestResults,
   PlayerBacktestResult,
   DateBacktestResult,
+  SavedBacktestRun,
 } from './backtestEngine.js';
 
 export {

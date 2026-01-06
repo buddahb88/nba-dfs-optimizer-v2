@@ -12,6 +12,8 @@ import { optimizerRoutes } from './routes/optimizer.js';
 import { historicalRoutes } from './routes/historical.js';
 import { chatRoutes } from './routes/chat.js';
 import { rotowireRoutes } from './routes/rotowire.js';
+import { agentRoutes } from './routes/agents.js';
+import { backtestRoutes } from './routes/backtest.js';
 
 export async function buildApp(opts: FastifyServerOptions = {}) {
   const app = Fastify(opts);
@@ -50,6 +52,8 @@ export async function buildApp(opts: FastifyServerOptions = {}) {
         { name: 'Optimizer', description: 'Lineup optimization' },
         { name: 'Historical', description: 'Historical data and analytics' },
         { name: 'Chat', description: 'AI chat interface' },
+        { name: 'Agents', description: 'Multi-agent group chat system' },
+        { name: 'Backtest', description: 'Projection backtesting' },
         { name: 'RotoWire', description: 'RotoWire data sync' },
       ],
     },
@@ -70,6 +74,8 @@ export async function buildApp(opts: FastifyServerOptions = {}) {
   await app.register(optimizerRoutes, { prefix: '/api/optimizer' });
   await app.register(historicalRoutes, { prefix: '/api/historical' });
   await app.register(chatRoutes, { prefix: '/api/chat' });
+  await app.register(agentRoutes, { prefix: '/api/agents' });
+  await app.register(backtestRoutes, { prefix: '/api/backtest' });
   await app.register(rotowireRoutes, { prefix: '/api' });
 
   // Error handler
