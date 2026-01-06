@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@nba-dfs/database';
+import { PrismaClient } from '@nba-dfs/database';
 import { BaseRepository } from './baseRepository.js';
 
 // Types for player operations
@@ -67,7 +67,17 @@ export interface PlayerWithHistory {
   gamesPlayed: number;
 }
 
-type Player = Prisma.PlayerGetPayload<{}>;
+type Player = Awaited<ReturnType<PrismaClient['player']['findFirst']>> & {};
+
+// Define PlayerWhereInput type for filtering
+interface PlayerWhereInput {
+  slateId?: string;
+  projectedPoints?: { gte?: number };
+  salary?: { lte?: number; gte?: number };
+  team?: { in?: string[] };
+  id?: { notIn?: string[] };
+  name?: { contains?: string };
+}
 
 export class PlayerRepository extends BaseRepository<
   Player,
@@ -86,7 +96,7 @@ export class PlayerRepository extends BaseRepository<
     filters?: PlayerFilters,
     orderBy?: { field: string; direction: 'asc' | 'desc' }
   ): Promise<Player[]> {
-    const where: Prisma.PlayerWhereInput = {
+    const where: PlayerWhereInput = {
       slateId,
       ...(filters?.minProjection && {
         projectedPoints: { gte: filters.minProjection },
@@ -109,9 +119,9 @@ export class PlayerRepository extends BaseRepository<
 
     // Filter by positions if specified (handled in-memory for complex matching)
     if (filters?.positions && filters.positions.length > 0) {
-      return players.filter((p) => {
-        const playerPositions = p.positions.split(',').map((pos) => pos.trim());
-        return playerPositions.some((pos) => filters.positions!.includes(pos));
+      return players.filter((p: { positions: string }) => {
+        const playerPositions = p.positions.split(',').map((pos: string) => pos.trim());
+        return playerPositions.some((pos: string) => filters.positions!.includes(pos));
       });
     }
 

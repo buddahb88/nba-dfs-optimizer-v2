@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@nba-dfs/database';
+import { PrismaClient } from '@nba-dfs/database';
 import { BaseRepository } from './baseRepository.js';
 
 // Types for team defense operations
@@ -38,7 +38,7 @@ export interface DefenseRanking {
   };
 }
 
-type TeamDefense = Prisma.TeamDefenseGetPayload<{}>;
+type TeamDefense = Awaited<ReturnType<PrismaClient['teamDefense']['findFirst']>> & {};
 
 export class TeamDefenseRepository extends BaseRepository<
   TeamDefense,
@@ -63,7 +63,7 @@ export class TeamDefenseRepository extends BaseRepository<
    */
   async getAllAsMap(): Promise<Map<string, TeamDefense>> {
     const defenses = await this.prisma.teamDefense.findMany();
-    return new Map(defenses.map((d) => [d.team, d]));
+    return new Map(defenses.map((d: TeamDefense) => [d.team, d]));
   }
 
   /**
@@ -78,7 +78,7 @@ export class TeamDefenseRepository extends BaseRepository<
       orderBy: { [positionField]: 'desc' },
     });
 
-    return defenses.map((d, index) => ({
+    return defenses.map((d: TeamDefense, index: number) => ({
       team: d.team,
       dvp: d[positionField] as number | null,
       rank: index + 1,
@@ -93,7 +93,7 @@ export class TeamDefenseRepository extends BaseRepository<
       orderBy: { defEff: 'asc' }, // Lower is better for defense
     });
 
-    return defenses.map((d, index) => ({
+    return defenses.map((d: TeamDefense, index: number) => ({
       team: d.team,
       defEff: d.defEff,
       rank: index + 1,
@@ -116,7 +116,7 @@ export class TeamDefenseRepository extends BaseRepository<
       orderBy: { pace: 'desc' },
     });
 
-    return defenses.map((d, index) => ({
+    return defenses.map((d: TeamDefense, index: number) => ({
       team: d.team,
       pace: d.pace,
       rank: index + 1,
@@ -198,18 +198,18 @@ export class TeamDefenseRepository extends BaseRepository<
     const defenses = await this.prisma.teamDefense.findMany();
 
     const avgDefEff =
-      defenses.reduce((sum, d) => sum + d.defEff, 0) / defenses.length;
+      defenses.reduce((sum: number, d: TeamDefense) => sum + d.defEff, 0) / defenses.length;
 
-    const offEffValues = defenses.filter((d) => d.offEff !== null);
+    const offEffValues = defenses.filter((d: TeamDefense) => d.offEff !== null);
     const avgOffEff =
       offEffValues.length > 0
-        ? offEffValues.reduce((sum, d) => sum + (d.offEff || 0), 0) / offEffValues.length
+        ? offEffValues.reduce((sum: number, d: TeamDefense) => sum + (d.offEff || 0), 0) / offEffValues.length
         : null;
 
-    const paceValues = defenses.filter((d) => d.pace !== null);
+    const paceValues = defenses.filter((d: TeamDefense) => d.pace !== null);
     const avgPace =
       paceValues.length > 0
-        ? paceValues.reduce((sum, d) => sum + (d.pace || 0), 0) / paceValues.length
+        ? paceValues.reduce((sum: number, d: TeamDefense) => sum + (d.pace || 0), 0) / paceValues.length
         : null;
 
     return {

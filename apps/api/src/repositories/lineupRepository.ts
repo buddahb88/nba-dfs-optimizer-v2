@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@nba-dfs/database';
+import { PrismaClient } from '@nba-dfs/database';
 import { BaseRepository } from './baseRepository.js';
 
 // Types for lineup operations
@@ -53,7 +53,7 @@ export interface LineupExposure {
   percentage: number;
 }
 
-type Lineup = Prisma.LineupGetPayload<{}>;
+type Lineup = Awaited<ReturnType<PrismaClient['lineup']['findFirst']>> & {};
 
 export class LineupRepository extends BaseRepository<
   Lineup,
@@ -334,23 +334,24 @@ export class LineupRepository extends BaseRepository<
       },
     });
 
-    const cashLineups = lineups.filter((l) => l.mode === 'CASH');
-    const gppLineups = lineups.filter((l) => l.mode === 'GPP');
-    const lineupsWithResults = lineups.filter((l) => l.actualPoints !== null);
+    type LineupStats = { mode: string; projectedPoints: number | null; totalSalary: number; actualPoints: number | null };
+    const cashLineups = lineups.filter((l: LineupStats) => l.mode === 'CASH');
+    const gppLineups = lineups.filter((l: LineupStats) => l.mode === 'GPP');
+    const lineupsWithResults = lineups.filter((l: LineupStats) => l.actualPoints !== null);
 
     const avgProjectedPoints =
       lineups.length > 0
-        ? lineups.reduce((sum, l) => sum + (l.projectedPoints || 0), 0) / lineups.length
+        ? lineups.reduce((sum: number, l: LineupStats) => sum + (l.projectedPoints || 0), 0) / lineups.length
         : 0;
 
     const avgSalary =
       lineups.length > 0
-        ? lineups.reduce((sum, l) => sum + l.totalSalary, 0) / lineups.length
+        ? lineups.reduce((sum: number, l: LineupStats) => sum + l.totalSalary, 0) / lineups.length
         : 0;
 
     const avgActualPoints =
       lineupsWithResults.length > 0
-        ? lineupsWithResults.reduce((sum, l) => sum + (l.actualPoints || 0), 0) /
+        ? lineupsWithResults.reduce((sum: number, l: LineupStats) => sum + (l.actualPoints || 0), 0) /
           lineupsWithResults.length
         : null;
 
@@ -395,7 +396,7 @@ export class LineupRepository extends BaseRepository<
 
     for (const lineup of existingLineups) {
       const existingKey = lineup.players
-        .map((p) => p.playerId)
+        .map((p: { playerId: string }) => p.playerId)
         .sort()
         .join('|');
       if (existingKey === newLineupKey) {

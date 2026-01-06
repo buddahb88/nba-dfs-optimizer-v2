@@ -93,9 +93,10 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
         },
       });
 
+      type SessionWithCount = typeof sessions[number];
       return {
         success: true,
-        data: sessions.map((s) => ({
+        data: sessions.map((s: SessionWithCount) => ({
           ...s,
           messageCount: s._count.messages,
         })),
@@ -195,7 +196,8 @@ export const chatRoutes: FastifyPluginAsync = async (app) => {
       });
 
       // Build conversation history for AI
-      const conversationHistory: ChatMessage[] = session.messages.map((m) => ({
+      type SessionMessage = typeof session.messages[number];
+      const conversationHistory: ChatMessage[] = session.messages.map((m: SessionMessage) => ({
         role: m.role as 'user' | 'assistant',
         content: m.content,
         toolCalls: m.toolCalls ? JSON.parse(m.toolCalls) : undefined,

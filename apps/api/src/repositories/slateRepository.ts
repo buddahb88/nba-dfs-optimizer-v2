@@ -1,4 +1,4 @@
-import { PrismaClient, Prisma } from '@nba-dfs/database';
+import { PrismaClient } from '@nba-dfs/database';
 import { BaseRepository } from './baseRepository.js';
 
 // Types for slate operations
@@ -29,7 +29,11 @@ export interface SlateWithCounts {
   lineupCount: number;
 }
 
-type Slate = Prisma.SlateGetPayload<{}>;
+type Slate = Awaited<ReturnType<PrismaClient['slate']['findFirst']>> & {};
+type Player = Awaited<ReturnType<PrismaClient['player']['findFirst']>> & {};
+type LineupWithPlayerRelations = Awaited<ReturnType<PrismaClient['lineup']['findFirst']>> & {
+  players: Array<{ player: Player }>;
+};
 
 export class SlateRepository extends BaseRepository<
   Slate,
@@ -63,7 +67,8 @@ export class SlateRepository extends BaseRepository<
       },
     });
 
-    return slates.map((slate) => ({
+    type SlateWithCount = typeof slates[number];
+    return slates.map((slate: SlateWithCount) => ({
       id: slate.id,
       externalId: slate.externalId,
       name: slate.name,
@@ -89,12 +94,7 @@ export class SlateRepository extends BaseRepository<
   /**
    * Find slate with all players
    */
-  async findWithPlayers(id: string): Promise<
-    | (Slate & {
-        players: Prisma.PlayerGetPayload<{}>[];
-      })
-    | null
-  > {
+  async findWithPlayers(id: string) {
     return this.prisma.slate.findUnique({
       where: { id },
       include: {
@@ -108,14 +108,7 @@ export class SlateRepository extends BaseRepository<
   /**
    * Find slate with all lineups
    */
-  async findWithLineups(id: string): Promise<
-    | (Slate & {
-        lineups: Prisma.LineupGetPayload<{
-          include: { players: { include: { player: true } } };
-        }>[];
-      })
-    | null
-  > {
+  async findWithLineups(id: string) {
     return this.prisma.slate.findUnique({
       where: { id },
       include: {
@@ -229,15 +222,16 @@ export class SlateRepository extends BaseRepository<
     if (!slate) return null;
 
     const players = slate.players;
+    type SlatePlayer = { salary: number; projectedPoints: number | null; team: string; opponent: string };
     const avgSalary =
       players.length > 0
-        ? players.reduce((sum, p) => sum + p.salary, 0) / players.length
+        ? players.reduce((sum: number, p: SlatePlayer) => sum + p.salary, 0) / players.length
         : 0;
 
-    const validProjections = players.filter((p) => p.projectedPoints !== null);
+    const validProjections = players.filter((p: SlatePlayer) => p.projectedPoints !== null);
     const avgProjection =
       validProjections.length > 0
-        ? validProjections.reduce((sum, p) => sum + (p.projectedPoints || 0), 0) /
+        ? validProjections.reduce((sum: number, p: SlatePlayer) => sum + (p.projectedPoints || 0), 0) /
           validProjections.length
         : 0;
 

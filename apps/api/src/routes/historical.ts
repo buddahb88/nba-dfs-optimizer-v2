@@ -47,10 +47,11 @@ export const historicalRoutes: FastifyPluginAsync = async (app) => {
       });
 
       // Calculate averages
+      type HistGame = { dkFantasyPoints: number; minutes: number | null };
       const avgDkPts =
-        games.reduce((sum, g) => sum + g.dkFantasyPoints, 0) / games.length || 0;
+        games.reduce((sum: number, g: HistGame) => sum + g.dkFantasyPoints, 0) / games.length || 0;
       const avgMinutes =
-        games.reduce((sum, g) => sum + (g.minutes || 0), 0) / games.length || 0;
+        games.reduce((sum: number, g: HistGame) => sum + (g.minutes || 0), 0) / games.length || 0;
 
       return {
         success: true,
@@ -153,10 +154,11 @@ export const historicalRoutes: FastifyPluginAsync = async (app) => {
         where: { slateId },
       });
 
+      type SlatePlayer = typeof slatePlayers[number];
       const slatePlayerNames = new Set(
-        slatePlayers.map((p) => p.name.toLowerCase())
+        slatePlayers.map((p: SlatePlayer) => p.name.toLowerCase())
       );
-      const teams = [...new Set(slatePlayers.map((p) => p.team))];
+      const teams = [...new Set(slatePlayers.map((p: SlatePlayer) => p.team))];
 
       // Find historical high-usage players for each team
       const usageBumps = [];
@@ -174,8 +176,9 @@ export const historicalRoutes: FastifyPluginAsync = async (app) => {
         });
 
         // Find high-usage players not in slate
+        type RecentGame = typeof recentGames[number];
         const historicalPlayers = new Set(
-          recentGames.map((g) => g.playerName.toLowerCase())
+          recentGames.map((g: RecentGame) => g.playerName.toLowerCase())
         );
         const missingPlayers = [...historicalPlayers].filter(
           (name) => !slatePlayerNames.has(name)
@@ -270,11 +273,12 @@ export const historicalRoutes: FastifyPluginAsync = async (app) => {
       });
 
       // Calculate averages
+      type MatchupGame = { dkFantasyPoints: number };
       const vsOppAvg =
-        vsOppGames.reduce((s, g) => s + g.dkFantasyPoints, 0) /
+        vsOppGames.reduce((s: number, g: MatchupGame) => s + g.dkFantasyPoints, 0) /
           vsOppGames.length || 0;
       const seasonAvg =
-        allGames.reduce((s, g) => s + g.dkFantasyPoints, 0) / allGames.length ||
+        allGames.reduce((s: number, g: MatchupGame) => s + g.dkFantasyPoints, 0) / allGames.length ||
         0;
 
       return {
