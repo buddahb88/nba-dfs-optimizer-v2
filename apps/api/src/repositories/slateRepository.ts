@@ -6,13 +6,23 @@ export interface SlateCreateInput {
   externalId: string;
   name: string;
   sport?: string;
+  contestType?: string;
   startTime?: Date | null;
+  endTime?: Date | null;
+  salaryCap?: number;
+  gameCount?: number;
+  isDefault?: boolean;
   status?: string;
 }
 
 export interface SlateUpdateInput {
   name?: string;
+  contestType?: string;
   startTime?: Date | null;
+  endTime?: Date | null;
+  salaryCap?: number;
+  gameCount?: number;
+  isDefault?: boolean;
   status?: string;
 }
 
@@ -21,7 +31,12 @@ export interface SlateWithCounts {
   externalId: string;
   name: string;
   sport: string;
+  contestType: string;
   startTime: Date | null;
+  endTime: Date | null;
+  salaryCap: number;
+  gameCount: number | null;
+  isDefault: boolean;
   status: string;
   createdAt: Date;
   updatedAt: Date;
@@ -69,7 +84,49 @@ export class SlateRepository extends BaseRepository<
       externalId: slate.externalId,
       name: slate.name,
       sport: slate.sport,
+      contestType: slate.contestType,
       startTime: slate.startTime,
+      endTime: slate.endTime,
+      salaryCap: slate.salaryCap,
+      gameCount: slate.gameCount,
+      isDefault: slate.isDefault,
+      status: slate.status,
+      createdAt: slate.createdAt,
+      updatedAt: slate.updatedAt,
+      playerCount: slate._count.players,
+      lineupCount: slate._count.lineups,
+    }));
+  }
+
+  /**
+   * Find slates by contest type
+   */
+  async findByContestType(contestType: string): Promise<SlateWithCounts[]> {
+    const slates = await this.prisma.slate.findMany({
+      where: { contestType },
+      orderBy: { startTime: 'asc' },
+      include: {
+        _count: {
+          select: {
+            players: true,
+            lineups: true,
+          },
+        },
+      },
+    });
+
+    type SlateWithCount = typeof slates[number];
+    return slates.map((slate: SlateWithCount) => ({
+      id: slate.id,
+      externalId: slate.externalId,
+      name: slate.name,
+      sport: slate.sport,
+      contestType: slate.contestType,
+      startTime: slate.startTime,
+      endTime: slate.endTime,
+      salaryCap: slate.salaryCap,
+      gameCount: slate.gameCount,
+      isDefault: slate.isDefault,
       status: slate.status,
       createdAt: slate.createdAt,
       updatedAt: slate.updatedAt,
@@ -182,7 +239,12 @@ export class SlateRepository extends BaseRepository<
       create: data,
       update: {
         name: data.name,
+        contestType: data.contestType,
         startTime: data.startTime,
+        endTime: data.endTime,
+        salaryCap: data.salaryCap,
+        gameCount: data.gameCount,
+        isDefault: data.isDefault,
         status: data.status,
       },
     });

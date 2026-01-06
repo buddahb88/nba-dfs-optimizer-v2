@@ -1,12 +1,12 @@
 // NBA DFS Optimizer V2 - Prisma Schema
-// Using Azure SQL Database
+// Using PostgreSQL
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlserver"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -19,7 +19,12 @@ model Slate {
   externalId  String    @unique // DraftKings slate ID
   name        String
   sport       String    @default("NBA")
+  contestType String    @default("Classic") // Classic, Showdown, Tiers
   startTime   DateTime?
+  endTime     DateTime?
+  salaryCap   Int       @default(50000) // Default DK salary cap
+  gameCount   Int?      // Number of games in slate
+  isDefault   Boolean   @default(false) // Default slate for the day
   status      String    @default("PENDING") // PENDING, ACTIVE, LOCKED, COMPLETED
   players     Player[]
   lineups     Lineup[]
@@ -60,8 +65,24 @@ model Player {
   leverageScore     Float?
   ownership         Float?
 
+  // Historical averages from RotoWire (avgFpts)
+  avgFptsLast3      Float?
+  avgFptsLast5      Float?
+  avgFptsLast7      Float?
+  avgFptsLast14     Float?
+  avgFptsSeason     Float?
+
+  // Advanced stats from RotoWire
+  per               Float?   // Player Efficiency Rating
+  usageRate         Float?   // Usage rate percentage
+  restDays          Int?     // Days since last game
+
+  // Game context
+  isHome            Boolean  @default(false)
+  injuryStatus      String?  // "", "GTD", "OUT", "Q", etc.
+
   // Raw data for debugging
-  rawData           String?  @db.NVarChar(Max)
+  rawData           String?  @db.Text
 
   lineupPlayers     LineupPlayer[]
   createdAt         DateTime @default(now())
@@ -172,7 +193,7 @@ model LineupPlayer {
   lineupId    String
   lineup      Lineup   @relation(fields: [lineupId], references: [id], onDelete: Cascade)
   playerId    String
-  player      Player   @relation(fields: [playerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  player      Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
   slot        String   // PG, SG, SF, PF, C, G, F, UTIL
 
   @@unique([lineupId, slot])
@@ -196,9 +217,9 @@ model ChatMessage {
   sessionId   String
   session     ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   role        String      // USER, ASSISTANT, SYSTEM, TOOL
-  content     String      @db.NVarChar(Max)
-  toolCalls   String?     @db.NVarChar(Max)
-  metadata    String?     @db.NVarChar(Max)
+  content     String      @db.Text
+  toolCalls   String?     @db.Text
+  metadata    String?     @db.Text
   createdAt   DateTime    @default(now())
 }
 
@@ -231,6 +252,6 @@ model BacktestRun {
   meanAbsError    Float
   rmse            Float?
   r2              Float?
-  byConfidence    String?  @db.NVarChar(Max) // JSON string
+  byConfidence    String?  @db.Text // JSON string
   createdAt       DateTime @default(now())
 }

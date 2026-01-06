@@ -25,6 +25,7 @@ export const slateRoutes: FastifyPluginAsync = async (app) => {
           type: 'object',
           properties: {
             status: { type: 'string', enum: ['PENDING', 'ACTIVE', 'LOCKED', 'COMPLETED'] },
+            contestType: { type: 'string', enum: ['Classic', 'Showdown', 'Tiers'] },
             limit: { type: 'integer', default: 20 },
             offset: { type: 'integer', default: 0 },
           },
@@ -32,17 +33,23 @@ export const slateRoutes: FastifyPluginAsync = async (app) => {
       },
     },
     async (request, reply) => {
-      const { status, limit, offset } = request.query as {
+      const { status, contestType, limit, offset } = request.query as {
         status?: string;
+        contestType?: string;
         limit?: number;
         offset?: number;
       };
 
-      const slates = await slateRepo.findAllWithCounts({
-        status,
-        limit: limit || 20,
-        offset: offset || 0,
-      });
+      let slates;
+      if (contestType) {
+        slates = await slateRepo.findByContestType(contestType);
+      } else {
+        slates = await slateRepo.findAllWithCounts({
+          status,
+          limit: limit || 20,
+          offset: offset || 0,
+        });
+      }
 
       return {
         success: true,
@@ -51,6 +58,50 @@ export const slateRoutes: FastifyPluginAsync = async (app) => {
           count: slates.length,
           limit: limit || 20,
           offset: offset || 0,
+        },
+      };
+    }
+  );
+
+  // Get slates grouped by contest type
+  app.get(
+    '/by-type',
+    {
+      schema: {
+        tags: ['Slates'],
+        description: 'Get available slates grouped by contest type for lineup building',
+      },
+    },
+    async () => {
+      const [classic, showdown, tiers] = await Promise.all([
+        slateRepo.findByContestType('Classic'),
+        slateRepo.findByContestType('Showdown'),
+        slateRepo.findByContestType('Tiers'),
+      ]);
+
+      return {
+        success: true,
+        data: {
+          Classic: classic,
+          Showdown: showdown,
+          Tiers: tiers,
+        },
+        rosterRules: {
+          Classic: {
+            slots: ['PG', 'SG', 'SF', 'PF', 'C', 'G', 'F', 'UTIL'],
+            salaryCap: 50000,
+            description: '8 players, $50K salary cap',
+          },
+          Showdown: {
+            slots: ['CPT', 'FLEX', 'FLEX', 'FLEX', 'FLEX', 'FLEX'],
+            salaryCap: 50000,
+            description: '1 Captain (1.5x pts/salary) + 5 FLEX, single game',
+          },
+          Tiers: {
+            slots: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6'],
+            salaryCap: null,
+            description: 'Pick 1 player from each tier, no salary cap',
+          },
         },
       };
     }

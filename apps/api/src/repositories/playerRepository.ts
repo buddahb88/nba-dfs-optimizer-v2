@@ -26,6 +26,19 @@ export interface PlayerCreateInput {
   bustProbability?: number | null;
   leverageScore?: number | null;
   ownership?: number | null;
+  // Historical averages from RotoWire
+  avgFptsLast3?: number | null;
+  avgFptsLast5?: number | null;
+  avgFptsLast7?: number | null;
+  avgFptsLast14?: number | null;
+  avgFptsSeason?: number | null;
+  // Advanced stats
+  per?: number | null;
+  usageRate?: number | null;
+  restDays?: number | null;
+  // Game context
+  isHome?: boolean;
+  injuryStatus?: string | null;
   rawData?: string | null;
 }
 
@@ -180,7 +193,7 @@ export class PlayerRepository extends BaseRepository<
    * Uses raw SQL for efficient aggregation (fixes N+1 query problem)
    */
   async getWithHistoricalStats(slateId: string): Promise<PlayerWithHistory[]> {
-    // For SQL Server, we need to use different date functions
+    // PostgreSQL syntax
     const players = await this.prisma.$queryRaw<PlayerWithHistory[]>`
       SELECT
         p.id,
@@ -189,31 +202,31 @@ export class PlayerRepository extends BaseRepository<
         p.opponent,
         p.positions,
         p.salary,
-        p.[projectedPoints],
+        p."projectedPoints",
         (
-          SELECT AVG(h.[dkFantasyPoints])
-          FROM [HistoricalGame] h
-          WHERE LOWER(p.name) = LOWER(h.[playerName])
-        ) as seasonAvg,
+          SELECT AVG(h."dkFantasyPoints")
+          FROM "HistoricalGame" h
+          WHERE LOWER(p.name) = LOWER(h."playerName")
+        ) as "seasonAvg",
         (
-          SELECT AVG(h.[dkFantasyPoints])
-          FROM [HistoricalGame] h
-          WHERE LOWER(p.name) = LOWER(h.[playerName])
-          AND h.[gameDate] >= DATEADD(day, -7, GETDATE())
-        ) as last7Avg,
+          SELECT AVG(h."dkFantasyPoints")
+          FROM "HistoricalGame" h
+          WHERE LOWER(p.name) = LOWER(h."playerName")
+          AND h."gameDate" >= NOW() - INTERVAL '7 days'
+        ) as "last7Avg",
         (
-          SELECT AVG(h.[dkFantasyPoints])
-          FROM [HistoricalGame] h
-          WHERE LOWER(p.name) = LOWER(h.[playerName])
-          AND h.[gameDate] >= DATEADD(day, -3, GETDATE())
-        ) as last3Avg,
+          SELECT AVG(h."dkFantasyPoints")
+          FROM "HistoricalGame" h
+          WHERE LOWER(p.name) = LOWER(h."playerName")
+          AND h."gameDate" >= NOW() - INTERVAL '3 days'
+        ) as "last3Avg",
         (
           SELECT COUNT(*)
-          FROM [HistoricalGame] h
-          WHERE LOWER(p.name) = LOWER(h.[playerName])
-        ) as gamesPlayed
-      FROM [Player] p
-      WHERE p.[slateId] = ${slateId}
+          FROM "HistoricalGame" h
+          WHERE LOWER(p.name) = LOWER(h."playerName")
+        ) as "gamesPlayed"
+      FROM "Player" p
+      WHERE p."slateId" = ${slateId}
     `;
 
     return players;

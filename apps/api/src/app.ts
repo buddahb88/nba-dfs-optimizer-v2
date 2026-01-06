@@ -11,6 +11,7 @@ import { playerRoutes } from './routes/players.js';
 import { optimizerRoutes } from './routes/optimizer.js';
 import { historicalRoutes } from './routes/historical.js';
 import { chatRoutes } from './routes/chat.js';
+import { rotowireRoutes } from './routes/rotowire.js';
 
 export async function buildApp(opts: FastifyServerOptions = {}) {
   const app = Fastify(opts);
@@ -49,6 +50,7 @@ export async function buildApp(opts: FastifyServerOptions = {}) {
         { name: 'Optimizer', description: 'Lineup optimization' },
         { name: 'Historical', description: 'Historical data and analytics' },
         { name: 'Chat', description: 'AI chat interface' },
+        { name: 'RotoWire', description: 'RotoWire data sync' },
       ],
     },
   });
@@ -68,6 +70,7 @@ export async function buildApp(opts: FastifyServerOptions = {}) {
   await app.register(optimizerRoutes, { prefix: '/api/optimizer' });
   await app.register(historicalRoutes, { prefix: '/api/historical' });
   await app.register(chatRoutes, { prefix: '/api/chat' });
+  await app.register(rotowireRoutes, { prefix: '/api' });
 
   // Error handler
   app.setErrorHandler((error, request, reply) => {
