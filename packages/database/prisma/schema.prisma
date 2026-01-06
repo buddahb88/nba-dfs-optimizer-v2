@@ -1,0 +1,236 @@
+// NBA DFS Optimizer V2 - Prisma Schema
+// Using Azure SQL Database
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// SLATE & PLAYER MODELS
+// =============================================================================
+
+model Slate {
+  id          String    @id @default(cuid())
+  externalId  String    @unique // DraftKings slate ID
+  name        String
+  sport       String    @default("NBA")
+  startTime   DateTime?
+  status      String    @default("PENDING") // PENDING, ACTIVE, LOCKED, COMPLETED
+  players     Player[]
+  lineups     Lineup[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Player {
+  id                String   @id @default(cuid())
+  externalId        String   // RotoWire/DK player ID
+  slateId           String
+  slate             Slate    @relation(fields: [slateId], references: [id], onDelete: Cascade)
+  name              String
+  team              String
+  opponent          String
+  positions         String   // Comma-separated: "PG,SG,G,UTIL"
+  salary            Int
+
+  // Projections (stored for audit trail)
+  projectedPoints   Float?
+  projectedMinutes  Float?
+  floor             Float?
+  ceiling           Float?
+  value             Float?
+  confidence        String   @default("LOW") // LOW, MEDIUM, HIGH
+
+  // Matchup data (denormalized for query speed)
+  dvpPtsAllowed     Float?
+  oppDefEff         Float?
+  vegasImplied      Float?
+  vegasSpread       Float?
+  vegasTotal        Float?
+
+  // Calculated metrics
+  usageBump         Float?
+  boomProbability   Float?
+  bustProbability   Float?
+  leverageScore     Float?
+  ownership         Float?
+
+  // Raw data for debugging
+  rawData           String?  @db.NVarChar(Max)
+
+  lineupPlayers     LineupPlayer[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([slateId, externalId])
+  @@index([slateId])
+  @@index([team])
+}
+
+// =============================================================================
+// HISTORICAL DATA MODELS
+// =============================================================================
+
+model HistoricalGame {
+  id              String   @id @default(cuid())
+  playerName      String
+  playerId        String?
+  team            String
+  opponent        String
+  gameDate        DateTime
+  season          String
+  isHome          Boolean  @default(false)
+
+  // Box score stats
+  minutes         Float?
+  points          Int?
+  rebounds        Int?
+  assists         Int?
+  steals          Int?
+  blocks          Int?
+  turnovers       Int?
+  plusMinus       Int?
+
+  // Shooting
+  fgMade          Int?
+  fgAttempted     Int?
+  fg3Made         Int?
+  fg3Attempted    Int?
+  ftMade          Int?
+  ftAttempted     Int?
+
+  // Advanced
+  usagePct        Float?
+  trueShooting    Float?
+  effectiveFg     Float?
+
+  // Calculated
+  dkFantasyPoints Float
+  restDays        Int?
+  isBackToBack    Boolean @default(false)
+
+  createdAt       DateTime @default(now())
+
+  @@unique([playerName, team, gameDate])
+  @@index([playerName])
+  @@index([gameDate])
+  @@index([team])
+  @@index([opponent])
+}
+
+model TeamDefense {
+  id          String   @id @default(cuid())
+  team        String   @unique
+  defEff      Float
+  offEff      Float?
+  pace        Float?
+
+  // Position-specific DVP
+  dvpPg       Float?
+  dvpSg       Float?
+  dvpSf       Float?
+  dvpPf       Float?
+  dvpC        Float?
+
+  updatedAt   DateTime @updatedAt
+}
+
+// =============================================================================
+// LINEUP MODELS
+// =============================================================================
+
+model Lineup {
+  id              String         @id @default(cuid())
+  slateId         String
+  slate           Slate          @relation(fields: [slateId], references: [id], onDelete: Cascade)
+  name            String
+  totalSalary     Int
+  projectedPoints Float?
+  mode            String         @default("CASH") // CASH, GPP
+  isOptimized     Boolean        @default(false)
+
+  players         LineupPlayer[]
+
+  // Backtesting
+  actualPoints    Float?
+  contestId       String?
+  placement       Int?
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([slateId])
+}
+
+model LineupPlayer {
+  id          String   @id @default(cuid())
+  lineupId    String
+  lineup      Lineup   @relation(fields: [lineupId], references: [id], onDelete: Cascade)
+  playerId    String
+  player      Player   @relation(fields: [playerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  slot        String   // PG, SG, SF, PF, C, G, F, UTIL
+
+  @@unique([lineupId, slot])
+}
+
+// =============================================================================
+// CHAT & AI MODELS
+// =============================================================================
+
+model ChatSession {
+  id          String        @id @default(cuid())
+  name        String?
+  slateId     String?
+  messages    ChatMessage[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model ChatMessage {
+  id          String      @id @default(cuid())
+  sessionId   String
+  session     ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role        String      // USER, ASSISTANT, SYSTEM, TOOL
+  content     String      @db.NVarChar(Max)
+  toolCalls   String?     @db.NVarChar(Max)
+  metadata    String?     @db.NVarChar(Max)
+  createdAt   DateTime    @default(now())
+}
+
+// =============================================================================
+// ANALYTICS & BACKTESTING MODELS
+// =============================================================================
+
+model ProjectionAccuracy {
+  id              String     @id @default(cuid())
+  slateId         String
+  playerId        String
+  playerName      String
+  projectedPoints Float
+  actualPoints    Float?
+  error           Float?     // actual - projected
+  errorPct        Float?     // error / projected * 100
+  confidence      String     // LOW, MEDIUM, HIGH
+  createdAt       DateTime   @default(now())
+
+  @@index([slateId])
+  @@index([createdAt])
+}
+
+model BacktestRun {
+  id              String   @id @default(cuid())
+  startDate       DateTime
+  endDate         DateTime
+  totalSlates     Int
+  meanError       Float
+  meanAbsError    Float
+  rmse            Float?
+  r2              Float?
+  byConfidence    String?  @db.NVarChar(Max) // JSON string
+  createdAt       DateTime @default(now())
+}

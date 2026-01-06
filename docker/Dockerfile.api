@@ -1,0 +1,51 @@
+# API Dockerfile
+FROM node:20-alpine AS base
+
+# Install pnpm
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+
+WORKDIR /app
+
+# Copy workspace configuration
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml turbo.json ./
+
+# Copy package files for all packages
+COPY packages/database/package.json ./packages/database/
+COPY packages/types/package.json ./packages/types/
+COPY packages/utils/package.json ./packages/utils/
+COPY apps/api/package.json ./apps/api/
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source files
+COPY packages ./packages
+COPY apps/api ./apps/api
+
+# Generate Prisma client
+RUN pnpm --filter @nba-dfs/database db:generate
+
+# Build packages
+RUN pnpm build
+
+# Production stage
+FROM node:20-alpine AS production
+
+RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
+
+WORKDIR /app
+
+# Copy built application
+COPY --from=base /app/node_modules ./node_modules
+COPY --from=base /app/packages ./packages
+COPY --from=base /app/apps/api ./apps/api
+COPY --from=base /app/package.json ./package.json
+COPY --from=base /app/pnpm-workspace.yaml ./pnpm-workspace.yaml
+
+# Set environment
+ENV NODE_ENV=production
+ENV PORT=3001
+
+EXPOSE 3001
+
+CMD ["node", "apps/api/dist/index.js"]

@@ -1,0 +1,29 @@
+{
+  "name": "nba-dfs-optimizer-v2",
+  "version": "2.0.0",
+  "private": true,
+  "description": "NBA DFS Optimizer - A production-grade DFS research platform",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "test": "turbo test",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "clean": "turbo clean && rm -rf node_modules",
+    "db:generate": "pnpm --filter @nba-dfs/database generate",
+    "db:migrate": "pnpm --filter @nba-dfs/database migrate:dev",
+    "db:push": "pnpm --filter @nba-dfs/database push",
+    "db:studio": "pnpm --filter @nba-dfs/database studio",
+    "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\""
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "prettier": "^3.2.4",
+    "turbo": "^2.3.3",
+    "typescript": "^5.3.3"
+  }
+}
